@@ -1,0 +1,256 @@
+---
+title: "Homework 1"
+author: "Zahra Makim"
+format: html
+---
+
+## 1. Import.
+
+Import the data directly from the Google Sheet. If you want to work on this while not connected to the internet, you can also download the data and import from file, but please include the Google Sheet import code so that it can be run (by me/someone else) without access to that local file.
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+df_survey <- read_sheet("https://docs.google.com/spreadsheets/d/1V4zxt-zlLwsQ7xbP-kkNh2pFyjTDDnKtS-IhpFJ03wc/edit#gid=196049496") %>% select(-"Email Address")
+
+head(df_survey)
+View(df_survey)
+```
+
+## 2. Rename. 
+
+Rename the columns to something more sensible and easy to work with. Make sure that you preserve information about which item and condition it is in the column when doing so. Change any data types that you think need to be changed, if any. 
+
+```{r}
+colnames(df_survey)[1] = "participant"
+colnames(df_survey)[2] = "native_english_speaker"
+colnames(df_survey)[3] = "zip_code"
+colnames(df_survey)[4] = "01b"
+colnames(df_survey)[5] = "01a"
+colnames(df_survey)[6] = "01c"
+colnames(df_survey)[7] = "02a"
+colnames(df_survey)[8] = "03a"
+colnames(df_survey)[9] = "04a"
+colnames(df_survey)[10] = "07a"
+colnames(df_survey)[11] = "08a"
+colnames(df_survey)[12] = "09a"
+colnames(df_survey)[13] = "010a"
+colnames(df_survey)[14] = "06a"
+colnames(df_survey)[15] = "02b"
+colnames(df_survey)[16] = "03b"
+colnames(df_survey)[17] = "04b"
+colnames(df_survey)[18] = "07b"
+colnames(df_survey)[19] = "08b"
+colnames(df_survey)[20] = "09b"
+colnames(df_survey)[21] = "010b"
+colnames(df_survey)[22] = "06b"
+
+View(df_survey)
+```
+
+## 3. Anonymize. 
+
+We're going to assume (because of how I set up the form) that there is only one row per person. To (sort of) anonymize the data, replace the identifying information (email address) with a sequence of "participant numbers" that go from 1 for the first row to n (total number of rows). 
+
+```{r}
+
+df_survey$participant <- (1:nrow(df_survey))
+
+```
+
+## 4. Pivot. 
+
+Create a **new** dataframe/tibble (preserving the original one that has been renamed separately) where the data is pivoted to long/tidy format.
+
+```{r}
+df_survey_tidy <- df_survey |>
+  pivot_longer(
+    cols = starts_with("0"),
+    names_to = "sentence",
+    values_to = "judgment"
+  )
+
+```
+
+## 5. Conditions. 
+
+Create a column called "condition" of the appropriate type that indicates for each row whether it is "needs construction" (a examples), "needs to be" (b examples), or "other" (c examples). Check again that all columns are the types that they should be and adjust if needed. 
+
+```{r}
+
+df_survey_tidy <- df_survey_tidy %>% mutate(condition = ifelse(grepl("a", sentence), "needs construction",
+                                         ifelse(grepl("b", sentence), "needs to be", "other")))
+
+View(df_survey_tidy)
+
+```
+
+
+## 6. N Participants. 
+
+How many participants are there in the dataset? Generate this number programmatically so that it will stay up to date! In other words, don't just look in your session and then write the answer in text. Use code to generate the response in the report.
+
+```{r}
+num_participants <- (nrow(df_survey))
+
+num_participants
+
+```
+
+## 7. Part Rating. 
+
+What is the mean rating for each participant across all items (sentences)?
+
+```{r}
+
+df_survey_mean <- df_survey_tidy |> 
+  group_by(participant) |> 
+  summarize(mean = mean(judgment)
+  )
+
+```
+
+
+## 8. Part Rating Condition A.
+
+What is the mean rating for each participant across all of condition a?
+
+```{r}
+df_condition_a <- df_survey_tidy |> 
+  group_by(participant, "needs construction") |> 
+  summarize(mean = mean(judgment)
+  )
+
+View(df_condition_a)
+```
+
+## 9. Part Rating Conditions A and B.
+
+What is the mean rating for each participant across each of condition a and b? Omit condition c. 
+
+```{r}
+df_condition_a_b <- df_survey_tidy |> 
+  filter(condition != "other") |>
+  group_by(participant, condition) |> 
+  summarize(mean = mean(judgment)
+  )
+
+
+View(df_condition_a_b)
+
+```
+
+
+## 10. Pivot Wider and Compare. 
+
+Pivot the data from the previous question wider so that you can see each participants mean rating for conditions a and b on the same row, and create a new column with the difference in ratings (b minus a).
+
+```{r}
+df_mean_rating <- df_condition_a_b |>
+  pivot_wider(
+    names_from = condition,
+    values_from = mean,
+    values_fill = 0
+  )
+
+colnames(df_mean_rating)[2] = "a"
+colnames(df_mean_rating)[3] = "b"
+
+df_mean_rating <- df_mean_rating %>% mutate(
+  difference = b - a)
+
+View(df_mean_rating)
+
+```
+
+
+## 11. Item Rating. 
+
+What is the mean rating for each item across all participants?
+
+```{r}
+
+df_survey_item <- df_survey_tidy |> 
+  group_by(sentence) |> 
+  summarize(mean = mean(judgment)
+  )
+
+View(df_survey_item)
+```
+
+
+## 12. Condition Rating. 
+
+What is the mean rating for each condition? Omit condition c. 
+
+```{r}
+
+df_survey_condition <- df_survey_tidy |> 
+  group_by(condition) |> 
+  summarize(mean = mean(judgment)
+  )
+
+View(df_survey_condition)
+
+
+```
+
+
+## 13. Pivot Items Wider. 
+
+Pivot and calculate the differences for items the same way you did for participants.
+
+```{r}
+
+df_survey_item <- df_survey_tidy |> 
+  filter(condition != "other") |>
+  group_by(sentence, condition) |> 
+  summarize(mean = mean(judgment)
+  )
+
+df_mean_item <- df_survey_item |>
+  pivot_wider(
+    names_from = condition,
+    values_from = mean,
+    values_fill = 0
+  )
+
+colnames(df_mean_item)[2] = "a"
+colnames(df_mean_item)[3] = "b"
+
+df_mean_item <- df_mean_item %>% mutate(
+  difference = b - a)
+
+View(df_mean_item)
+
+```
+
+
+## 14. Plot. 
+
+Choose your own plot adventure! Use the dataframes/reshaped data you made above or reshape the data in new ways to visually explore data relationships in any way you like. Create at least two plots. Depending on how hard/time-consuming the prior parts were, you may want to spend a little or a lot of time on this step. If you're tired, do whatever is easiest and you can tackle bigger challenges on the next homework. 
+
+```{r}
+
+ggplot(
+  data = df_survey_item,
+  mapping = aes(x = sentence, 
+                y = mean)) +
+  geom_point()
+
+
+my_responses <- df_survey_tidy |>
+  filter(participant == 23)
+
+ggplot(my_responses, mapping = aes(x = sentence, 
+                       y = judgment,)) + 
+  geom_point() +
+  labs (
+    title = "Zahra's Responses",
+    x = "Sentence number",
+    y = "Acceptance rating",
+  )
+
+
+
+```

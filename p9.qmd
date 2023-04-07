@@ -1,0 +1,73 @@
+---
+'/title: "p9"
+author: "Zahra Makim"
+format: html
+---
+
+## p9 - strings
+
+```{r}
+library(tidyverse)
+library(babynames)
+```
+
+##16.3 Exercises
+
+1. Compare and contrast the results of paste0() with str_c() for the following inputs:
+
+str_c("hi ", NA)
+str_c(letters[1:2], letters[1:3])
+
+```{r}
+str_c("hi ", NA)
+#str_c(letters[1:2], letters[1:3])
+```
+
+```{r}
+paste0("hi", NA)
+paste0(letters[1:2], letters[1:3])
+```
+str_c() gave an error for letters[] and only printed NA for "hi" NA. paste0 merged hiNA together, and printed aa,bb,ac for letters[].
+
+
+2. Convert the following expressions from str_c() to str_glue() or vice versa:
+
+str_c("The price of ", food, " is ", price)
+
+str_glue("I'm {age} years old and live in {country}")
+
+str_c("\\section{", title, "}")
+
+```{r}
+str_glue("The price of {food} is {price}")
+str_c("I'm ", age, " years old and live in ", country)
+str_glue("\\\\section{{{title}}")
+```
+##16.5 Exercises
+
+1. Use str_length() and str_sub() to extract the middle letter from each baby name. What will you do if the string has an even number of characters?
+
+```{r}
+babynames |>
+  mutate(middle_letter = str_sub(name, (str_length(name)/2)+1, (str_length(name)/2) + 1))
+```
+
+2. Are there any major trends in the length of babynames over time? What about the popularity of first and last letters?
+
+```{r}
+babynames |>
+  group_by(year) |>
+  count(length = str_length(name), wt = n) |>
+  arrange(desc(n)) |>
+  slice(1)
+
+#average name length over time varies from 5-6 letters long. 
+
+babynames |>
+  group_by(year) |>
+  count(first_letter = str_sub(name, 1, 1), wt = n) |>
+  arrange(desc(n)) |>
+  slice(1:3)  
+
+#most popular first letter is J, M, E, and A over time.
+```

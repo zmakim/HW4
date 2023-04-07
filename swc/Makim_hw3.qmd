@@ -1,0 +1,153 @@
+---
+title: "Homework 3"
+author: "Zahra Makim"
+format: html
+editor: visual
+---
+
+## 1. Pull the lyrics for the two artists from the Genius API using the geniusr package.
+
+```{r}
+library(tidyverse)
+library(geniusr)
+library(tidytext)
+library(textdata)
+
+GENIUS_API_TOKEN <- genius_token()
+```
+
+```{r}
+
+fob_id <- search_artist(search_term = "Fall Out Boy", n_results = 5, access_token = GENIUS_API_TOKEN)[1]
+fob_songs <- head(get_artist_songs_df(artist_id = fob_id, sort = "popularity", include_features = FALSE), 10)
+
+smiths_id <- search_artist(search_term = "The Smiths", n_results = 5, access_token = GENIUS_API_TOKEN)[1]
+smiths_songs <- head(get_artist_songs_df(artist_id = smiths_id, sort = "popularity", include_features = FALSE), 10)
+
+```
+
+```{r}
+fob_lyrics_1 <- get_lyrics_id(fob_songs$song_id[1])
+fob_lyrics_2 <- get_lyrics_id(fob_songs$song_id[2])
+fob_lyrics_df <- rbind(fob_lyrics_1, fob_lyrics_2)
+
+for(i in 3:nrow(fob_songs)) {
+  single_lyrics <- get_lyrics_id(fob_songs$song_id[i])
+  fob_lyrics_df <- rbind(fob_lyrics_df, single_lyrics)
+}
+
+View(fob_lyrics_df)
+```
+
+```{r}
+smiths_lyrics_1 <- get_lyrics_id(smiths_songs$song_id[1])
+smiths_lyrics_2 <- get_lyrics_id(smiths_songs$song_id[2])
+smiths_lyrics_df <- rbind(smiths_lyrics_1, smiths_lyrics_2)
+
+for(i in 3:nrow(smiths_songs)) {
+  single_lyrics <- get_lyrics_id(smiths_songs$song_id[i])
+  smiths_lyrics_df <- rbind(smiths_lyrics_df, single_lyrics)
+}
+
+View(smiths_lyrics_df)
+```
+
+I installed all necessary packages, set the Genius API access token, got the artist IDs, and used them to get the first 10 most popular songs of both artists in a tidy data frame. From there, I pulled the lyrics from 2 songs to combine their dataframes and then looped through the other 8 songs and added them as well. I'm aware that I could've looped through all 10, but it kept giving me a very frustrating error sometimes and sometimes it would go through. This was the only way I could get the lyrics dataframe to go through all the way and get it in View().
+
+
+## 2. Visualize a tf-idf analysis using at least 3 songs for each artist, separately, with stopwords excluded. In other words, do an analysis over 3 songs for The Cure, and a separate one for 3 songs by Beyoncé. You don't need to directly compare The Cure and Beyoncé for this part.
+
+```{r}
+fob_words <- fob_lyrics_df %>%
+  unnest_tokens(word, line) %>%
+  anti_join(stop_words)
+
+fob_tf <- fob_words %>%
+  count(song_name, word) %>%
+  group_by(song_name) %>%
+  mutate(freq = n / sum(n))
+
+fob_idf <- fob_words %>%
+  distinct(song_name, word) %>%
+  count(word) %>%
+  mutate(idf = log(nrow(fob_lyrics_df) / n))
+
+fob_tfidf <- fob_tf %>%
+  left_join(fob_idf, by = "word") %>%
+  mutate(tf_idf = freq * idf)
+
+fob_tfidf %>%
+  group_by(song_name) %>%
+  top_n(10, tf_idf) %>%
+  ungroup() %>%
+  ggplot(aes(x = reorder(word, tf_idf), y = tf_idf, fill = as.factor(song_name))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~song_name, scales = "free") +
+  labs(x = "Word", y = "tf-idf", title = "Top 10 tf-idf values for Fall Out Boy songs")
+```
+
+
+## 3. Show (print to console/output) the top 10 bigrams from each artist (without stopwords).
+
+```{r}
+fob_words <- fob_lyrics_df %>%
+  unnest_tokens(word, line) %>%
+  anti_join(stop_words)
+
+fob_bigrams <- fob_words %>%
+  mutate(next_word = lead(word)) %>%
+  filter(!is.na(next_word) & !word %in% stop_words$word & !next_word %in% stop_words$word) %>%
+  unite(bigram, word, next_word, sep = " ") 
+
+fob_bigrams <-fob_bigrams %>%
+  count(bigram, sort = TRUE) %>%
+  filter(n > 1)
+
+
+head(fob_bigrams, 10)
+```
+
+I would like to note that FOB's use of the word is being used to "cock" a gun.
+
+```{r}
+smiths_words <- smiths_lyrics_df %>%
+  unnest_tokens(word, line) %>%
+  anti_join(stop_words)
+
+smiths_bigrams <- smiths_words %>%
+  mutate(next_word = lead(word)) %>%
+  filter(!is.na(next_word) & !word %in% stop_words$word & !next_word %in% stop_words$word) %>%
+  unite(bigram, word, next_word, sep = " ") 
+
+smiths_bigrams <- smiths_bigrams %>%
+  count(bigram, sort = TRUE) %>%
+  filter(n > 1)
+
+
+head(smiths_bigrams, 10)
+```
+
+
+## 4. Use sentiment analysis to find and visualize the most common positive and negative words across all at least 10 songs of lyrics for both artists (without stopwords). Use facet_wrap() to show positive and negative in the same plot. See https://www.tidytextmining.com/sentiment.html#most-positive-negative.
+
+```{r}
+all_words <- rbind(fob_words, smiths_words)
+all_words
+
+afinn <- get_sentiments("afinn")
+
+fob_sentiment <- fob_words %>%
+  inner_join(afinn, by = "word")%>% 
+  group_by(value) %>%
+  summarize(word = unique(word), freq = n()) %>% 
+  arrange(desc(freq))
+
+fob_sentiment
+```
+
+## 5. Create a word cloud across all at least 10 songs of lyrics for both artists.
+
+```{r}
+
+
+```

@@ -1,11 +1,94 @@
 ---
 title: "HW4"
+author: "Zahra Makim"
+format: html
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+## 1. Pull some posts from a subreddit - you can choose the subreddit and if you want to specify particular keywords. Use your text analysis skills to calculate and visualize the top words, excluding stopwords. I'm being deliberately a big vague about how many words - see what looks informative depending on how much you are looking at, the content, etc.
 
 ```{r}
-1 + 1
+library(RedditExtractoR)
+library(tidytext)
+library(tidyverse)
+library(wordcloud)
+```
+
+```{r eval = FALSE}
+top_vocaloid_urls <- find_thread_urls(subreddit="Vocaloid", sort_by="top")
+str(top_vocaloid_urls)
+
+threads_contents <- get_thread_content(top_vocaloid_urls$url[1:100])
+
+save_threads <- threads_contents
+saveRDS(save_threads, "threads_comments.RDS")
+```
+
+```{r}
+threads_contents <- readRDS("threads_comments.RDS")
+```
+Here, I've taken the top 100 posts from r/Vocaloid, which is a subreddit discussing all things Vocaloid. Vocaloid is a singing voice synthesizer, and is used in a lot of music I listen to! I would've done more posts, but it was saying too.
+
+```{r}
+top_words <- threads_contents$threads %>%
+  unnest_tokens(word, title) %>%
+  filter(!word %in% stop_words$word) %>%
+  count(word, sort = TRUE)
+
+```
+
+Taking the words from all the titles of the posts, unnesting them as tokens, and arranging by frequency.
+
+```{r}
+
+bar_words <- top_words %>%
+  head(10)
+
+ggplot(bar_words, aes(x = reorder(word, n), y = n)) +
+  geom_bar(stat = "identity", fill = "pink") +
+  labs(title = "Top 10 Words in r/Vocaloid Posts",
+       x = "Word",
+       y = "Frequency") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Then I've taken the top 10 words and displayed in a bar plot.
+
+```{r}
+top_words %>%
+  with(wordcloud(word, n, max.words = 100))
+```
+
+Also visualized all words in a word cloud.
+
+## 2. To practice working with lists, pull data on a specific user. It can be yourself if you like! Do a similar word frequency analysis based on their comments.
+
+```{r}
+
+user <- "f0lieadeuces"
+fob_user <- get_user_content(user)
+
+comment_words <- fob_user$f0lieadeuces$comments %>%
+  unnest_tokens(word, comment) %>%
+  filter(!word %in% stop_words$word) %>%
+  count(word, sort = TRUE)
+```
+
+Pulled data and again created a df of the top words in the comments by frequency, and created a bar plot and word cloud below.
+
+```{r}
+
+bar_comments <- comment_words %>%
+  head(20)
+
+ggplot(bar_comments, aes(x = reorder(word, n), y = n)) +
+  geom_bar(stat = "identity", fill = "lightblue") +
+  labs(title = "Top Words in Comments",
+       x = "Word",
+       y = "Frequency")
+```
+
+```{r}
+comment_words %>%
+  with(wordcloud(word, n, max.words = 100))
 ```
