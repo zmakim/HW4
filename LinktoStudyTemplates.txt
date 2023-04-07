@@ -1,4 +1,0 @@
-MTurk Templates 
-
-Recalled: https://homes.cs.washington.edu/~msap/hippoCorpus/eventRecall.html
-Imagined: https://homes.cs.washington.edu/~msap/hippoCorpus/eventImagine.html
